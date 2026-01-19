@@ -62,7 +62,7 @@ def on_startup():
                 full_name="Super Admin",
                 is_superuser=True,
                 is_active=True,
-                role="admin" # Enum string value
+                role="admin" 
             )
             session.add(user)
             session.commit()
