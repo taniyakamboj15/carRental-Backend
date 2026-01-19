@@ -51,6 +51,23 @@ Here is how each assigned feature was architected and implemented:
 *   **Invoicing**: Generated in background after payment.
 *   **Scheduled Cleanup**: Using **Celery Beat** to auto-expire unpaid bookings.
 
+### 3. Permissions & Roles 👮‍♂️
+
+*   **`is_superuser` (Technical Power) ⚡**
+    *   This is the "System Admin". In the codebase, security checks (like `deps.get_current_active_superuser`) strictly check this flag.
+    *   If `True`, the user has full access (Delete, Create, Edit).
+*   **`role="admin"` (Business Label) 🏷️**
+    *   This is a metadata label for the Frontend.
+    *   Example: If `role == "admin"`, the UI shows the "Dashboard" button. Useful for future roles like "Manager" or "Support".
+
+**Protected Routes (Where `is_superuser` is Checked):**
+1.  **Vehicles Management** (`/api/v1/vehicles/`):
+    *   `POST /`, `PUT /{id}`, `DELETE /{id}` -> **Admin Only** (Manage Fleet).
+2.  **KYC Verification** (`/api/v1/users/{id}/kyc`):
+    *   `PUT /` -> **Admin Only** (Approve/Reject Docs).
+3.  **Bookings List** (`/api/v1/bookings/`):
+    *   `GET /`: **Conditional**. If Admin -> View *ALL*. If User -> View *OWN*.
+
 ---
 
 ## 🛠️ Setup & Installation
