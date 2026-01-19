@@ -11,6 +11,7 @@ from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead
 
+
 router = APIRouter()
 
 @router.post("/login", response_model=Token)
@@ -78,9 +79,20 @@ def create_user(
             detail="The user with this username already exists in the system.",
         )
     
-    user_obj = User.from_orm(user_in)
-    user_obj.hashed_password = security.get_password_hash(user_in.password)
+    user_obj = User.from_orm(user_in, update={"hashed_password": security.get_password_hash(user_in.password)})
+
+
     session.add(user_obj)
     session.commit()
     session.refresh(user_obj)
+
+    # Send Welcome Email via Celery
+    from app.worker import send_welcome_email_task
+    send_welcome_email_task.delay(
+        email=user_obj.email, 
+        full_name=user_obj.full_name or "User"
+    )
+
     return user_obj
+
+

@@ -7,6 +7,12 @@ class UserRole(str, Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
 
+class KYCStatus(str, Enum):
+    PENDING = "pending"
+    SUBMITTED = "submitted"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True)
     full_name: Optional[str] = None
@@ -14,6 +20,8 @@ class UserBase(SQLModel):
     is_superuser: bool = False
     role: UserRole = Field(default=UserRole.CUSTOMER)
     kyc_verified: bool = False
+    kyc_status: KYCStatus = Field(default=KYCStatus.PENDING)
+    kyc_document_url: Optional[str] = None
     phone_number: Optional[str] = None
 
 class User(UserBase, table=True):

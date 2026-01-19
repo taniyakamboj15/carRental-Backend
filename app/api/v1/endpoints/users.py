@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from app.api import deps
 from app.db.session import get_session
-from app.models.user import User
-from app.schemas.user import UserRead, UserUpdate
+from app.models.user import User, KYCStatus
+from app.schemas.user import UserRead, UserUpdate, UserKYCSubmit, UserKYCUpdate
 
 router = APIRouter()
 
@@ -35,3 +35,46 @@ def update_user_me(
     session.commit()
     session.refresh(current_user)
     return current_user
+
+@router.post("/kyc", response_model=UserRead)
+def submit_kyc(
+    *,
+    session: Session = Depends(deps.get_session),
+    kyc_in: UserKYCSubmit,
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Submit KYC document.
+    """
+    current_user.kyc_document_url = kyc_in.document_url
+    current_user.kyc_status = KYCStatus.SUBMITTED
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    return current_user
+
+@router.put("/{user_id}/kyc", response_model=UserRead)
+def update_kyc_status(
+    *,
+    session: Session = Depends(deps.get_session),
+    user_id: int,
+    kyc_in: UserKYCUpdate,
+    current_user: User = Depends(deps.get_current_active_superuser),
+) -> Any:
+    """
+    Admin: Approve or Reject KYC.
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.kyc_status = kyc_in.kyc_status
+    if user.kyc_status == KYCStatus.VERIFIED:
+        user.kyc_verified = True
+    else:
+        user.kyc_verified = False
+        
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user

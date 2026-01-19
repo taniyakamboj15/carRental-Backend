@@ -1,6 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, EmailStr
-from app.models.user import UserRole
+from app.models.user import UserRole, KYCStatus
 import datetime
 
 class UserCreate(BaseModel):
@@ -23,7 +23,15 @@ class UserRead(BaseModel):
     is_superuser: bool
     role: UserRole
     kyc_verified: bool
+    kyc_status: KYCStatus
+    kyc_document_url: Optional[str] = None
     phone_number: Optional[str] = None
+
+class UserKYCSubmit(BaseModel):
+    document_url: str
+
+class UserKYCUpdate(BaseModel):
+    kyc_status: KYCStatus
 
 class UserLogin(BaseModel):
     email: EmailStr
