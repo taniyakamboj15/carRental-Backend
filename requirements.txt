@@ -12,3 +12,4 @@ celery[redis]
 flower
 redis
 bcrypt==3.2.0
+slowapi

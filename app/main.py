@@ -5,6 +5,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.core.exceptions import http_exception_handler, validation_exception_handler
+from slowapi import _rate_limit_exceeded_handler, Limiter
+from slowapi.errors import RateLimitExceeded
+from app.core.limiter import limiter
+from app.db.session import engine
+from sqlmodel import Session, select
+from app.models.user import User
+from app.core import security
 import time
 import logging
 
@@ -38,6 +45,10 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Rate Limiting
+    application.state.limiter = limiter
+    application.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
     application.include_router(api_router, prefix=settings.API_V1_STR)
     return application
 
@@ -48,10 +59,7 @@ def read_root():
 
 @app.on_event("startup")
 def on_startup():
-    from app.db.session import engine
-    from sqlmodel import Session, select
-    from app.models.user import User
-    from app.core import security
+
     
     with Session(engine) as session:
         user = session.exec(select(User).where(User.email == "admin@example.com")).first()

@@ -1,6 +1,7 @@
 from datetime import timedelta
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from app.core.limiter import limiter
 from sqlmodel import Session, select
 from app.api import deps
 from app.core import security
@@ -15,7 +16,9 @@ from app.worker import send_welcome_email_task
 router = APIRouter()
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute")
 def login_access_token(
+    request: Request,
     response: Response,
     user_in: UserLogin,
     session: Session = Depends(deps.get_session),
@@ -62,7 +65,9 @@ def logout(response: Response):
     return {"message": "Logged out successfully"}
 
 @router.post("/signup", response_model=UserRead)
+@limiter.limit("5/minute")
 def create_user(
+    request: Request,
     *,
     session: Session = Depends(deps.get_session),
     user_in: UserCreate,

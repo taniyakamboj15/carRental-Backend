@@ -8,6 +8,7 @@ from app.models.vehicle import Vehicle
 from app.models.booking import Booking, BookingStatus
 from app.schemas.booking import BookingCreate, BookingRead
 from app.services import booking_service
+from app.helpers import idempotency
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ def create_booking(
     session: Session = Depends(deps.get_session),
     booking_in: BookingCreate,
     current_user: User = Depends(deps.get_current_user),
+    idempotency_key: str = Depends(idempotency.check_idempotency)
 ) -> Any:
     """
     Create a booking.
@@ -41,6 +43,11 @@ def create_booking(
     session.add(booking)
     session.commit()
     session.refresh(booking)
+
+    # Save Idempotency Key
+    if idempotency_key:
+        idempotency.save_idempotency_key(idempotency_key, {"status": "success", "booking_id": booking.id})
+
     return booking
 
 @router.get("/", response_model=List[BookingRead])

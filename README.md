@@ -46,12 +46,23 @@ Here is how each assigned feature was architected and implemented:
 *   **Password Hashing**: Uses `Bcrypt` for salt-and-hash storage.
 *   **Role Based Access Control (RBAC)**: Distinct permissions for `Admin` vs `Customer`.
 
-### 2. background Jobs (Celery)
+### 2. Reliability (Idempotency) 🛡️
+*   **Prevent Double Booking/Charging**: API supports `Idempotency-Key` header.
+*   **Mechanism**: If a user clicks "Pay" twice, the second request (with same Key) returns the *saved result* of the first one, protecting against duplicate charges.
+
+
+### 3. Rate Limiting 🚦
+*   **Protection**: Uses `SlowAPI` (based on Redis/Memory).
+*   **Rules**:
+    *   **Login/Signup**: Restricted to **5 requests/minute** per IP to prevent Brute Force attacks.
+    *   **Global**: Scalable infrastructure to add limits to any route easily.
+
+### 4. Background Jobs (Celery)
 *   **Welcome Emails**: Sent asynchronously on Signup.
 *   **Invoicing**: Generated in background after payment.
 *   **Scheduled Cleanup**: Using **Celery Beat** to auto-expire unpaid bookings.
 
-### 3. Permissions & Roles 👮‍♂️
+### 5. Permissions & Roles 👮‍♂️
 
 *   **`is_superuser` (Technical Power) ⚡**
     *   This is the "System Admin". In the codebase, security checks (like `deps.get_current_active_superuser`) strictly check this flag.
