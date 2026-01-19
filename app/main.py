@@ -42,6 +42,9 @@ def create_application() -> FastAPI:
     return application
 
 app = create_application()
+@app.get("/")
+def read_root():
+    return {"message": "welcome to the car rental system backend!"}
 
 @app.on_event("startup")
 def on_startup():
@@ -63,7 +66,5 @@ def on_startup():
             )
             session.add(user)
             session.commit()
-            print("----------------------------------------------------------------")
             print("Superuser created: admin@example.com / admin123")
-            print("----------------------------------------------------------------")
-
+          

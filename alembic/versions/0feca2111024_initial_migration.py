@@ -1,19 +1,18 @@
 """Initial migration
 
-Revision ID: 29076d124bdd
+Revision ID: 0feca2111024
 Revises: 
-Create Date: 2026-01-19 12:34:11.084363
+Create Date: 2026-01-19 12:48:07.384293
 
 """
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = '29076d124bdd'
+revision: str = '0feca2111024'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -29,8 +28,6 @@ def upgrade() -> None:
     sa.Column('is_superuser', sa.Boolean(), nullable=False),
     sa.Column('role', sa.Enum('CUSTOMER', 'ADMIN', name='userrole'), nullable=False),
     sa.Column('kyc_verified', sa.Boolean(), nullable=False),
-    sa.Column('kyc_status', sa.Enum('PENDING', 'SUBMITTED', 'VERIFIED', 'REJECTED', name='kycstatus'), nullable=False),
-    sa.Column('kyc_document_url', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('phone_number', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('hashed_password', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
