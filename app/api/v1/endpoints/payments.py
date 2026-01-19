@@ -7,6 +7,7 @@ from app.models.booking import Booking, BookingStatus
 from app.models.payment import Payment, PaymentStatus
 from app.schemas.payment import PaymentCreate, PaymentRead
 from app.services import payment_service
+from app.worker import generate_invoice
 
 router = APIRouter()
 
@@ -41,6 +42,9 @@ def process_payment(
     if success:
         booking.status = BookingStatus.CONFIRMED
         session.add(booking)
+        
+        # Trigger Invoice Generation Task
+        generate_invoice.delay(booking.id)
         
     session.commit()
     session.refresh(payment)

@@ -10,44 +10,23 @@ from app.db.session import get_session
 from app.models.user import User
 from app.schemas.token import TokenPayload
 
-# OAuth2PasswordBearer is required for Swagger UI to show the Authorize button
-reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
-)
+
+
 
 def get_current_user(
     request: Request,
     session: Session = Depends(get_session),
-    token: Optional[str] = Depends(reusable_oauth2)
 ) -> User:
-    # Hybrid Auth: Check Cookie first, then Header (handled by depends reusable_oauth2)
-    # Note: depends reusable_oauth2 extracts from Authorization header
+    # Strict Cookie Auth
+    token = request.cookies.get("access_token")
     
-    # If header auth failed or wasn't provided, reusable_oauth2 yields None or throws if auto_error=True (default)
-    # But wait, auto_error=True means it throws 401. 
-    # To support cookie fallback properly, we should set auto_error=False on OAuth2PasswordBearer 
-    # OR we handle the logic carefully.
-    
-    # Better approach for hybrid:
-    # 1. Try to get token from cookie.
-    # 2. If no cookie, rely on Header (via OAuth2PasswordBearer).
-    
-    cookie_token = request.cookies.get("access_token")
-    if cookie_token:
-        # If verify works, return user
-        # Note: If cookie is present, we prioritize it or treat it as the token.
-         if cookie_token.startswith("Bearer "):
-             token = cookie_token.split(" ")[1]
-         else:
-             token = cookie_token
-    
-    # dependencies are executed. 'token' arg comes from reusable_oauth2
-    
+    if token and token.startswith("Bearer "):
+         token = token.split(" ")[1]
+         
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:
@@ -60,6 +39,7 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
         )
+
     
     user = session.get(User, int(token_data.sub))
     if not user:

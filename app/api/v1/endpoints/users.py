@@ -72,8 +72,16 @@ def update_kyc_status(
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if user.kyc_status != KYCStatus.SUBMITTED:
+        raise HTTPException(status_code=400, detail="KYC is not submitted")
     
     user.kyc_status = kyc_in.kyc_status
+    # Update kyc_verified based on kyc_status
+
+    
+    # If kyc_status is VERIFIED, set kyc_verified to True
+    # If kyc_status is REJECTED, set kyc_verified to False
     if user.kyc_status == KYCStatus.VERIFIED:
         user.kyc_verified = True
     else:
