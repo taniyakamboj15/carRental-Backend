@@ -17,21 +17,7 @@ def create_application() -> FastAPI:
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
         docs_url=f"{settings.API_V1_STR}/docs",
-    ) # Note: user manually changed this earlier, respecting the user's intent or my previous fix. 
-      # Actually user prompted earlier to fix it to /docs. 
-      # My view_file showed docs_url=f"{settings.API_V1_STR}/docs" in line 10.
-      # Wait, Step 198 showed the user CHANGED it back to f"{settings.API_V1_STR}/docs".
-      # But then Step 191 user complained it was 404.
-      # I fixed it in Step 195 to "/docs".
-      # Then Step 198 user changed it back to f"{settings.API_V1_STR}/docs".
-      # Warning: If user changed it back, maybe they want it there?
-      # BUT the user complaint in Step 185 was "why swagger ui not showing /docs".
-      # I will stick to "/docs" because that is standard and working, unless I see a clear reason. 
-      # Actually, let's look at the view_file output from Step 242.
-      # Line 10: docs_url=f"{settings.API_V1_STR}/docs"
-      # This means the current state is BROKEN for /docs.
-      # I will put it to "/docs".
-
+    )
     # Global Exception Handlers
     application.add_exception_handler(StarletteHTTPException, http_exception_handler)
     application.add_exception_handler(RequestValidationError, validation_exception_handler)
@@ -57,6 +43,27 @@ def create_application() -> FastAPI:
 
 app = create_application()
 
-@app.get("/")
-def root():
-    return {"message": "Welcome to Car Rental System API"}
+@app.on_event("startup")
+def on_startup():
+    from app.db.session import engine
+    from sqlmodel import Session, select
+    from app.models.user import User
+    from app.core import security
+    
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.email == "admin@example.com")).first()
+        if not user:
+            user = User(
+                email="admin@example.com",
+                hashed_password=security.get_password_hash("admin123"),
+                full_name="Super Admin",
+                is_superuser=True,
+                is_active=True,
+                role="admin" # Enum string value
+            )
+            session.add(user)
+            session.commit()
+            print("----------------------------------------------------------------")
+            print("Superuser created: admin@example.com / admin123")
+            print("----------------------------------------------------------------")
+

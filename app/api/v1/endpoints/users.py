@@ -2,6 +2,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from app.api import deps
+from app.core import security
 from app.db.session import get_session
 from app.models.user import User, KYCStatus
 from app.schemas.user import UserRead, UserUpdate, UserKYCSubmit, UserKYCUpdate
@@ -28,6 +29,10 @@ def update_user_me(
     Update own user.
     """
     user_data = user_in.dict(exclude_unset=True)
+    if "password" in user_data:
+        password = user_data.pop("password")
+        current_user.hashed_password = security.get_password_hash(password)
+        
     for key, value in user_data.items():
         setattr(current_user, key, value)
         
