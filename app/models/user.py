@@ -23,6 +23,7 @@ class UserBase(SQLModel):
     kyc_status: KYCStatus = Field(default=KYCStatus.PENDING)
     kyc_document_url: Optional[str] = None
     phone_number: Optional[str] = None
+    city: Optional[str] = None
 
 class User(UserBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

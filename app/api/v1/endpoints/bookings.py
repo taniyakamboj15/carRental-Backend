@@ -19,12 +19,25 @@ def create_booking(
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
    
+    if not current_user.kyc_verified:
+        raise HTTPException(status_code=403, detail="KYC Verification Required. Please upload documents in your profile.")
+
     vehicle = session.get(Vehicle, booking_in.vehicle_id)
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     
     if not booking_service.check_availability(session, booking_in.vehicle_id, booking_in.start_date, booking_in.end_date):
          raise HTTPException(status_code=400, detail="Vehicle not available for these dates")
+
+    # Verify Location Match
+    # "when user book car in fleet then use depend to check and verify that user location enter and vehicle base location are same"
+    vehicle_loc = vehicle.location.lower().strip()
+    pickup_loc = booking_in.pickup_location.lower().strip()
+    
+    # Check if vehicle location is part of pickup location (e.g. "Mumbai" in "Andheri, Mumbai")
+    # or exact match
+    if vehicle_loc not in pickup_loc and pickup_loc not in vehicle_loc:
+         raise HTTPException(status_code=400, detail=f"Pickup location must be within {vehicle.location}. You selected: {booking_in.pickup_location}")
 
     total = booking_service.calculate_total(vehicle.daily_rate, booking_in.start_date, booking_in.end_date)
     
@@ -34,6 +47,7 @@ def create_booking(
             vehicle_id=vehicle.id,
             start_date=booking_in.start_date,
             end_date=booking_in.end_date,
+            pickup_location=booking_in.pickup_location,
             total_amount=total,
             status=BookingStatus.PENDING
         )
@@ -41,7 +55,12 @@ def create_booking(
         session.commit()
         session.refresh(booking)
         print(f"Booking created: {booking}")
-        return booking
+        session.commit()
+        session.refresh(booking)
+        print(f"Booking created: {booking}")
+        
+        # Enrich for response
+        return _enrich_booking_with_driver_info(session, booking)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -61,7 +80,28 @@ def read_bookings(
         statement = select(Booking).where(Booking.user_id == current_user.id).offset(skip).limit(limit)
     
     bookings = session.exec(statement).all()
-    return bookings
+    
+    # Enrich all bookings
+    enriched_bookings = [_enrich_booking_with_driver_info(session, b) for b in bookings]
+    return enriched_bookings
+
+def _enrich_booking_with_driver_info(session: Session, booking: Booking) -> BookingRead:
+    vehicle = session.get(Vehicle, booking.vehicle_id)
+    driver_name = None
+    driver_contact = None
+    
+    if vehicle:
+        driver_name = vehicle.driver_name
+        # Only show contact if confirmed
+        if booking.status == BookingStatus.CONFIRMED:
+            driver_contact = vehicle.driver_contact
+            
+    # Create a dict from the booking to satisfy the Pydantic model (since we are adding fields)
+    booking_dict = booking.dict()
+    booking_dict['driver_name'] = driver_name
+    booking_dict['driver_contact'] = driver_contact
+    
+    return BookingRead(**booking_dict)
 
 @router.patch("/{booking_id}/cancel", response_model=BookingRead)
 def cancel_booking(
@@ -87,4 +127,5 @@ def cancel_booking(
     session.add(booking)
     session.commit()
     session.refresh(booking)
-    return booking
+    session.refresh(booking)
+    return _enrich_booking_with_driver_info(session, booking)

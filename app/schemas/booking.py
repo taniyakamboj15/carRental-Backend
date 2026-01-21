@@ -5,6 +5,7 @@ from app.models.booking import BookingStatus
 
 class BookingCreate(BaseModel):
     vehicle_id: int
+    pickup_location: str
     start_date: date
     end_date: date
 
@@ -23,5 +24,8 @@ class BookingRead(BaseModel):
     start_date: date
     end_date: date
     total_amount: float
+    pickup_location: str
+    driver_name: Optional[str] = None
+    driver_contact: Optional[str] = None
     status: BookingStatus
     created_at: datetime

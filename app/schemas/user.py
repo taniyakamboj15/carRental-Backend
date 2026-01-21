@@ -9,6 +9,7 @@ class UserCreate(BaseModel):
     full_name: Optional[str] = None
     role: UserRole = UserRole.CUSTOMER
     phone_number: Optional[str] = None
+    city: Optional[str] = None
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -26,6 +27,7 @@ class UserRead(BaseModel):
     kyc_status: KYCStatus
     kyc_document_url: Optional[str] = None
     phone_number: Optional[str] = None
+    city: Optional[str] = None
 
 class UserKYCSubmit(BaseModel):
     document_url: str

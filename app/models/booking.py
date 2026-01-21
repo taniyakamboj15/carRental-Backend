@@ -12,6 +12,7 @@ class BookingStatus(str, Enum):
 class BookingBase(SQLModel):
     user_id: int = Field(foreign_key="user.id")
     vehicle_id: int = Field(foreign_key="vehicle.id")
+    pickup_location: str
     start_date: date
     end_date: date
     total_amount: float

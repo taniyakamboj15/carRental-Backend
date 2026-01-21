@@ -6,8 +6,22 @@ from app.core import security
 from app.db.session import get_session
 from app.models.user import User, KYCStatus
 from app.schemas.user import UserRead, UserUpdate, UserKYCSubmit, UserKYCUpdate
+from app.utils import validate_phone, validate_city
 
 router = APIRouter()
+
+@router.get("/", response_model=list[UserRead])
+def read_users(
+    skip: int = 0,
+    limit: int = 100,
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_active_superuser),
+) -> Any:
+    """
+    Retrieve users.
+    """
+    users = session.exec(select(User).offset(skip).limit(limit)).all()
+    return users
 
 @router.get("/me", response_model=UserRead)
 def read_user_me(
@@ -31,6 +45,17 @@ def update_user_me(
         password = user_data.pop("password")
         current_user.hashed_password = security.get_password_hash(password)
         
+        current_user.hashed_password = security.get_password_hash(password)
+    
+    # Validation for updates
+    if "city" in user_data and user_data["city"]:
+         if not validate_city(user_data["city"]):
+              raise HTTPException(status_code=400, detail=f"Invalid city: {user_data['city']}")
+              
+    if "phone_number" in user_data and user_data["phone_number"]:
+         if not validate_phone(user_data["phone_number"]):
+              raise HTTPException(status_code=400, detail="Invalid phone number format")
+
     for key, value in user_data.items():
         setattr(current_user, key, value)
         

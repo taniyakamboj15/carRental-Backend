@@ -1,24 +1,61 @@
-from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from typing import Any, List, Optional
+from datetime import date
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlmodel import Session, select, and_, or_
 from app.api import deps
 from app.db.session import get_session
 from app.models.user import User
-from app.models.vehicle import Vehicle
+from app.models.vehicle import Vehicle, VehicleStatus
+from app.models.booking import Booking, BookingStatus
 from app.schemas.vehicle import VehicleCreate, VehicleRead, VehicleUpdate
 
+from app.utils import validate_phone, validate_city
+
 router = APIRouter()
+
 
 @router.get("/", response_model=List[VehicleRead])
 def read_vehicles(
     skip: int = 0,
     limit: int = 100,
+    location: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     session: Session = Depends(deps.get_session),
-    
+    current_user: User = Depends(deps.get_current_user),
 ) -> Any:
     
-    statement = select(Vehicle).offset(skip).limit(limit)
-    vehicles = session.exec(statement).all()
+    query = select(Vehicle)
+
+    if location:
+        # Case-insensitive filtering - Search overrides User Profile City
+        query = query.where(Vehicle.location.ilike(f"%{location}%"))
+    elif not current_user.is_superuser:
+        # If no search, default to user's city
+        if current_user.city:
+            query = query.where(Vehicle.location.ilike(f"%{current_user.city}%"))
+        else:
+            # User has no city set and didn't search -> show nothing
+            query = query.where(Vehicle.id == -1)
+
+    if start_date and end_date:
+        # Find busy vehicles
+        busy_subquery = select(Booking.vehicle_id).where(
+            Booking.status.in_([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+            and_(
+                Booking.start_date <= end_date,
+                Booking.end_date >= start_date
+            )
+        )
+        query = query.where(Vehicle.id.not_in(busy_subquery))
+
+    # Also filter by available status if not managed elsewhere
+    # query = query.where(Vehicle.status == VehicleStatus.AVAILABLE) 
+    # (Optional: depends if we want to show rented cars that are free in the future. 
+    # For now, let's show all matching the date filter.)
+
+    query = query.offset(skip).limit(limit)
+    vehicles = session.exec(query).all()
     return vehicles
 
 @router.post("/", response_model=VehicleRead)
@@ -29,6 +66,15 @@ def create_vehicle(
     current_user: User = Depends(deps.get_current_active_superuser),
 ) -> Any:
    
+    # Validate Phone
+    if vehicle_in.driver_contact:
+        if not validate_phone(vehicle_in.driver_contact):
+             raise HTTPException(status_code=400, detail="Invalid driver contact number")
+
+    # Validate City
+    if not validate_city(vehicle_in.location):
+         raise HTTPException(status_code=400, detail=f"Location '{vehicle_in.location}' not found. Please enter a valid city.")
+
     vehicle = Vehicle.from_orm(vehicle_in)
     session.add(vehicle)
     session.commit()

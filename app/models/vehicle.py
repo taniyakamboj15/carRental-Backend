@@ -13,6 +13,9 @@ class VehicleBase(SQLModel):
     year: int
     license_plate: str = Field(unique=True)
     daily_rate: float
+    location: str
+    driver_name: Optional[str] = None
+    driver_contact: Optional[str] = None
     status: VehicleStatus = Field(default=VehicleStatus.AVAILABLE)
     image_url: Optional[str] = None
 

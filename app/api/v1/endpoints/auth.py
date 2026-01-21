@@ -10,6 +10,7 @@ from app.db.session import get_session
 from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead
+from app.utils import validate_phone, validate_city
 
 router = APIRouter()
 
@@ -71,6 +72,13 @@ def create_user(
             detail="The user with this username already exists in the system.",
         )
     
+    # Validate City & Phone
+    if user_in.city and not validate_city(user_in.city):
+        raise HTTPException(status_code=400, detail=f"Invalid city: {user_in.city}")
+    
+    if user_in.phone_number and not validate_phone(user_in.phone_number):
+         raise HTTPException(status_code=400, detail="Invalid phone number format")
+
     user_data = user_in.dict(exclude={"password"})
     user_obj = User(**user_data, hashed_password=security.get_password_hash(user_in.password))
     session.add(user_obj)
