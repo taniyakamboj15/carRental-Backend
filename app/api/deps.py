@@ -11,22 +11,31 @@ from app.models.user import User
 from app.schemas.token import TokenPayload
 
 
-
+reusable_oauth2 = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+)
 
 def get_current_user(
     request: Request,
     session: Session = Depends(get_session),
+    token: Optional[str] = Depends(reusable_oauth2)
 ) -> User:
-    # Strict Cookie Auth
-    token = request.cookies.get("access_token")
+   
     
-    if token and token.startswith("Bearer "):
-         token = token.split(" ")[1]
-         
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        
+         if cookie_token.startswith("Bearer "):
+             token = cookie_token.split(" ")[1]
+         else:
+             token = cookie_token
+    
+    
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:
@@ -39,7 +48,6 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
         )
-
     
     user = session.get(User, int(token_data.sub))
     if not user:

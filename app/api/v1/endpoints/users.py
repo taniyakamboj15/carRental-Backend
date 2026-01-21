@@ -13,9 +13,7 @@ router = APIRouter()
 def read_user_me(
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
-    """
-    Get current user.
-    """
+   
     return current_user
 
 @router.put("/me", response_model=UserRead)

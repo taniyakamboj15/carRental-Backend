@@ -14,11 +14,9 @@ def read_vehicles(
     skip: int = 0,
     limit: int = 100,
     session: Session = Depends(deps.get_session),
-    # current_user: User = Depends(deps.get_current_user), # Allow public access for listing? Let's say yes for now or just generic auth
+    
 ) -> Any:
-    """
-    Retrieve vehicles.
-    """
+    
     statement = select(Vehicle).offset(skip).limit(limit)
     vehicles = session.exec(statement).all()
     return vehicles
@@ -30,9 +28,7 @@ def create_vehicle(
     vehicle_in: VehicleCreate,
     current_user: User = Depends(deps.get_current_active_superuser),
 ) -> Any:
-    """
-    Create new vehicle.
-    """
+   
     vehicle = Vehicle.from_orm(vehicle_in)
     session.add(vehicle)
     session.commit()
@@ -44,9 +40,7 @@ def read_vehicle_by_id(
     vehicle_id: int,
     session: Session = Depends(deps.get_session),
 ) -> Any:
-    """
-    Get vehicle by ID.
-    """
+  
     vehicle = session.get(Vehicle, vehicle_id)
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -60,9 +54,7 @@ def update_vehicle(
     vehicle_in: VehicleUpdate,
     current_user: User = Depends(deps.get_current_active_superuser),
 ) -> Any:
-    """
-    Update a vehicle.
-    """
+  
     vehicle = session.get(Vehicle, vehicle_id)
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -83,9 +75,7 @@ def delete_vehicle(
     vehicle_id: int,
     current_user: User = Depends(deps.get_current_active_superuser),
 ) -> Any:
-    """
-    Delete a vehicle.
-    """
+    
     vehicle = session.get(Vehicle, vehicle_id)
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")

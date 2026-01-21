@@ -10,7 +10,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     )
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    for error in errors:
+        if "ctx" in error:
+            error["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": exc.errors(), "body": exc.body},
+        content={"detail": errors, "body": str(exc.body)},
     )
