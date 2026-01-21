@@ -1,6 +1,10 @@
 from celery import Celery
 from celery.schedules import crontab
 from app.core.config import settings
+from sqlmodel import Session, select
+from app.db.session import engine
+from app.models.booking import Booking, BookingStatus
+from datetime import date
 
 celery_app = Celery("worker", broker=settings.CELERY_BROKER_URL, backend=settings.CELERY_RESULT_BACKEND)
 
@@ -18,10 +22,7 @@ celery_app.conf.beat_schedule = {
 
 @celery_app.task
 def check_expired_bookings():
-    from sqlmodel import Session, select
-    from app.db.session import engine
-    from app.models.booking import Booking, BookingStatus
-    from datetime import date
+    
 
     print("Checking for expired bookings...")
     
