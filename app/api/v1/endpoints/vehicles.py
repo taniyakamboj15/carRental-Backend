@@ -22,21 +22,15 @@ def read_vehicles(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     session: Session = Depends(deps.get_session),
-    current_user: User = Depends(deps.get_current_user),
 ) -> Any:
-    
+    """
+    Public endpoint - no auth required to browse vehicles
+    """
     query = select(Vehicle)
 
     if location:
-        # Case-insensitive filtering - Search overrides User Profile City
+        # Case-insensitive location filtering
         query = query.where(Vehicle.location.ilike(f"%{location}%"))
-    elif not current_user.is_superuser:
-        # If no search, default to user's city
-        if current_user.city:
-            query = query.where(Vehicle.location.ilike(f"%{current_user.city}%"))
-        else:
-            # User has no city set and didn't search -> show nothing
-            query = query.where(Vehicle.id == -1)
 
     if start_date and end_date:
         # Find busy vehicles
@@ -48,11 +42,6 @@ def read_vehicles(
             )
         )
         query = query.where(Vehicle.id.not_in(busy_subquery))
-
-    # Also filter by available status if not managed elsewhere
-    # query = query.where(Vehicle.status == VehicleStatus.AVAILABLE) 
-    # (Optional: depends if we want to show rented cars that are free in the future. 
-    # For now, let's show all matching the date filter.)
 
     query = query.offset(skip).limit(limit)
     vehicles = session.exec(query).all()

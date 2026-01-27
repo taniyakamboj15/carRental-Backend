@@ -12,7 +12,8 @@ from app.schemas.token import TokenPayload
 
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+    tokenUrl=f"{settings.API_V1_STR}/auth/login",
+    auto_error=False
 )
 
 def get_current_user(
@@ -22,13 +23,13 @@ def get_current_user(
 ) -> User:
    
     
-    cookie_token = request.cookies.get("access_token")
-    if cookie_token:
-        
-         if cookie_token.startswith("Bearer "):
-             token = cookie_token.split(" ")[1]
-         else:
-             token = cookie_token
+    if not token:
+        cookie_token = request.cookies.get("access_token")
+        if cookie_token:
+            if cookie_token.startswith("Bearer "):
+                token = cookie_token.split(" ")[1]
+            else:
+                token = cookie_token
     
     
     if not token:
@@ -64,3 +65,15 @@ def get_current_active_superuser(
             status_code=400, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+def get_refresh_token_from_cookie(request: Request) -> str:
+    """
+    Extract refresh token from HttpOnly cookie
+    """
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found",
+        )
+    return refresh_token

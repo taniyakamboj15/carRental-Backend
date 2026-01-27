@@ -35,15 +35,61 @@ def login_access_token(
         subject=user.id, expires_delta=access_token_expires
     )
     
+    # Create refresh token
+    refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+    refresh_token = security.create_refresh_token(
+        subject=user.id, expires_delta=refresh_token_expires
+    )
     
+    # Set refresh token as HttpOnly cookie
     response.set_cookie(
-        key="access_token",
-        value=f"Bearer {access_token}",
+        key="refresh_token",
+        value=refresh_token,
         httponly=True,
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        expires=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60,
+        expires=settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60,
         samesite="lax",
-        secure=False 
+        secure=False
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_access_token(
+    response: Response,
+    session: Session = Depends(deps.get_session),
+    refresh_token: str = Depends(deps.get_refresh_token_from_cookie),
+) -> Any:
+    """
+    Refresh access token using refresh token from HttpOnly cookie
+    """
+    try:
+        from jose import jwt
+        payload = jwt.decode(
+            refresh_token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+        )
+        user_id: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        
+        if user_id is None or token_type != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+            
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    
+    # Verify user still exists and is active
+    user = session.get(User, int(user_id))
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+    
+    # Create new access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = security.create_access_token(
+        subject=user.id, expires_delta=access_token_expires
     )
     
     return {
@@ -55,6 +101,7 @@ def login_access_token(
 def logout(response: Response):
    
     response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
     return {"message": "Logged out successfully"}
 
 @router.post("/signup", response_model=UserRead)

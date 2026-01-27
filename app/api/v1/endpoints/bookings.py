@@ -18,10 +18,6 @@ def create_booking(
     booking_in: BookingCreate,
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
-   
-    if not current_user.kyc_verified:
-        raise HTTPException(status_code=403, detail="KYC Verification Required. Please upload documents in your profile.")
-
     vehicle = session.get(Vehicle, booking_in.vehicle_id)
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
